@@ -1,28 +1,57 @@
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
 .env
 .env.*
 .env.local
+.env.production
+.env.development
+
+# Python
 .venv/
 venv/
+backend/venv/
+backend/.venv/
+.pytest_cache/
+backend/.pytest_cache/
+backend/.mypy_cache/
+*.sqlite3
+backend/app.db
+*.db
+
+# Node
 node_modules/
+.npm
+.pnpm-store
+.yarn/
+frontend/node_modules/
+
+# Next.js
 .next/
 .turbo/
 dist/
 build/
 frontend/.next/
 frontend/out/
-backend/__pycache__/
-backend/.mypy_cache/
-backend/venv/
-backend/.venv/
-backend/.pytest_cache/
-.pytest_cache/
-*.pyc
-*.pyo
-*.pyd
-*.sqlite3
-backend/app.db
+frontend/.turbo/
+
+# IDE
 .DS_Store
 .idea/
 .vscode/
+*.swp
+*.swo
+*~
+
+# Testing
 coverage/
+.nyc_output/
+*.lcov
+
+# Logs
+*.log
+logs/
+/tmp/
