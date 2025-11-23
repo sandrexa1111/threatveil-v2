@@ -1,0 +1,299 @@
+1) Gemini (LLM reasoning)
+
+Purpose: Turn raw signals into a plain-English summary + prioritized actions.
+Base: https://generativelanguage.googleapis.com/v1beta
+Endpoint: POST /models/gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}
+Auth: API key in query string.
+
+Request (recommended minimal)
+{
+  "contents": [
+    { "parts": [ { "text": "SYSTEM: You are Veil Analyst. ...\nUSER: <JSON signals + risk + likelihoods>" } ] }
+  ],
+  "generationConfig": {
+    "temperature": 0.2,
+    "topK": 40,
+    "topP": 0.9,
+    "maxOutputTokens": 300
+  },
+  "safetySettings": []
+}
+
+Response (relevant fields)
+{
+  "candidates": [
+    { "content": { "parts": [ { "text": "Final summary <=120 words + 2–3 actions" } ] } }
+  ]
+}
+
+Backoff & TTL
+
+429 / 5xx: retry after (200ms, 600ms, 1500–2500ms+jitter).
+
+Cache: 12h for identical {signals,risk} bundles (hash before adding timestamps).
+
+Redaction: remove emails, secrets, tokens from prompt; never include API keys.
+
+Error handling
+
+Missing candidates → return deterministic fallback summary.
+
+Guard against multi-paragraph outputs; clamp to 120 words yourself if needed.
+
+2) Supabase Postgres (persistence)
+
+Purpose: Store scans, signals, summaries, cache rows.
+Connect: DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/db
+
+Tables (core)
+-- scans
+id uuid pk, domain text, github_org text null,
+risk_score int, risk_likelihood_30d float8, risk_likelihood_90d float8,
+categories_json jsonb, signals_json jsonb, summary text,
+raw_payload jsonb, created_at timestamptz default now();
+
+-- cache
+key text primary key, value jsonb not null, expires_at timestamptz not null;
+
+Patterns
+
+Use pool_pre_ping=True on SQLAlchemy engine.
+
+Wrap writes in short transactions; store evidence inside signals_json (see envelope below).
+
+Add partial indexes later (e.g., by domain & created_at DESC).
+
+3) GitHub (public code search)
+
+Purpose: Find public leaks (keys, prompts, .env) in a target org.
+Base: https://api.github.com
+Endpoint: GET /search/code
+Auth: Authorization: token {GITHUB_TOKEN} (fine-grained, read-only public repos).
+
+Query design
+
+Use qualifiers to reduce noise and rate cost:
+
+q=org:{ORG} (filename:.env OR "OPENAI_API_KEY" OR "GEMINI_API_KEY" OR "system prompt" OR "-----BEGIN PRIVATE KEY-----")
+per_page=10
+
+Response (shape)
+{
+  "total_count": 2,
+  "items": [
+    { "name":"...", "path":"...", "repository":{"full_name":"org/repo"}, "html_url":"https://github.com/org/repo/blob/..." }
+  ]
+}
+
+Backoff & TTL
+
+Respect X-RateLimit-Remaining & Retry-After (if present).
+
+Cache: 24h per (org, query); only store metadata (no code blobs).
+
+Legal/Security
+
+Do not persist entire file contents. Link to html_url.
+
+Provide remediation guidance (key rotation, secret scanning CI).
+
+4) Vulners (CVE & security intel)
+
+Purpose: Map detected tech tokens (e.g., nginx/wordpress) to known CVEs.
+Base: https://vulners.com/api/v3
+Endpoints:
+• Search: POST /search/lucene/ with Lucene query
+• ID lookup: POST /search/id/
+Auth: X-Vulners-Api-Key: {VULNERS_API_KEY}
+
+Query strategy
+
+Build tokens from HTTP headers/meta: Server, X-Powered-By, meta generator.
+
+Normalize to "nginx 1.18" or "wordpress 6.4"; fallback to product-only if version absent.
+
+{ "query": "wordpress 6.4 AND type:cve", "size": 10 }
+
+Response (subset)
+{
+  "data": {
+    "search": [
+      {
+        "_source": {
+          "id": "CVE-2024-XXXX",
+          "cvss": { "score": 7.5 },
+          "title": "...",
+          "description": "...",
+          "published": "2024-05-10T...",
+          "href": "https://vulners.com/cve/CVE-2024-XXXX"
+        }
+      }
+    ]
+  }
+}
+
+Scoring mapping
+
+cvss.score >= 7.0 → high; 4.0–6.9 → medium; else low (software category).
+
+Backoff & TTL
+
+429/5xx → exp. backoff.
+
+Cache: 24h per token string; dedupe CVEs by id.
+
+5) Lakera Guard (prompt-injection / PII / safety)
+
+Purpose: Score inputs/outputs for injection, PII, jailbreak, etc.
+Base: https://api.lakera.ai
+Endpoint (recommended): POST /v2/guard (multi-detector in one call)
+Auth: Authorization: Bearer {LAKERA_API_KEY}
+
+Request
+{
+  "input": "User prompt or model output to evaluate",
+  "detectors": ["prompt_injection", "pii", "safety"]
+}
+
+Response (typical)
+{
+  "results": {
+    "prompt_injection": { "score": 0.83, "label": "high" },
+    "pii": { "score": 0.10, "label": "low" },
+    "safety": { "score": 0.12, "label": "low" }
+  }
+}
+
+Usage patterns
+
+Pre-LLM: score incoming user prompts.
+
+Post-LLM: score model outputs (redact or warn if unsafe).
+
+Cache: 1–6h for identical text; never cache raw secrets.
+
+6) AlienVault OTX (threat intel enrichment)
+
+Purpose: Enrich a domain with community intel signals (pulses, malware tags).
+Base: https://otx.alienvault.com/api/v1
+Auth: X-OTX-API-KEY: {OTX_API_KEY}
+
+Useful endpoints
+
+Domain intel: GET /indicators/domain/{domain}/general
+→ Pull pulse_info.count, malicious, alexa etc.
+
+Subscribed pulses: GET /pulses/subscribed (optional for research feed)
+
+Response (subset)
+{
+  "indicator": "example.com",
+  "pulse_info": { "count": 3, "pulses": [ { "name":"...", "id":"...", "modified":"..." } ] }
+}
+
+Integration
+
+Treat as weak signal unless corroborated by config issues.
+
+Cache: 24h per domain.
+
+
+8) Resend (email reports)
+
+Purpose: Email PDF reports and weekly summaries.
+Base: https://api.resend.com
+Endpoint: POST /emails
+Auth: Authorization: Bearer {RESEND_API_KEY}
+
+Attachment flow
+
+Base64 encode PDF bytes; include filename + content.
+
+{
+  "from": "ThreatVeil <reports@yourdomain>",
+  "to": ["owner@client.com"],
+  "subject": "Your ThreatVeil Risk Report",
+  "html": "<p>Attached is your report.</p>",
+  "attachments": [{
+    "filename": "threatveil-report.pdf",
+    "content": "<base64>"
+  }]
+}
+
+Tips
+
+Verify sender domain first; include unsubscribe/manage-alerts link later.
+
+Retry on 5xx with backoff; log id from success response for audit.
+
+Evidence Envelope (standardize in every signal)
+
+Always store provenance so summaries are auditable and investor-safe.
+
+{
+  "id": "http_header_hsts_missing",
+  "type": "http|tls|dns|ct|cve|github|otx|ai_guard",
+  "detail": "HSTS missing on root path",
+  "severity": "high|medium|low",
+  "category": "network|software|data_exposure|ai_integration",
+  "evidence": {
+    "source": "https",               // or "vulners", "github", "otx", "lakera"
+    "observed_at": "2025-11-13T12:00:00Z",
+    "url": "https://example.com/",   // if applicable
+    "raw": { "header_sample": { "Strict-Transport-Security": null } }
+  }
+}
+
+Retry / Backoff Template (Python)
+import asyncio, random
+
+async def with_backoff(fn, *, retries=3, base_ms=200, max_ms=2500):
+    for i in range(retries):
+        try:
+            return await fn()
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 429 or 500 <= e.response.status_code < 600:
+                delay = min(max_ms, base_ms * (2 ** i)) + random.randint(0, 200)
+                await asyncio.sleep(delay / 1000)
+            else:
+                raise
+        except (httpx.ReadTimeout, httpx.ConnectTimeout):
+            delay = min(max_ms, base_ms * (2 ** i)) + random.randint(0, 200)
+            await asyncio.sleep(delay / 1000)
+    # final try
+    return await fn()
+
+Cache Helper (pseudo)
+def cache_key(service: str, query: dict) -> str:
+    h = sha256(json.dumps(query, sort_keys=True).encode()).hexdigest()[:16]
+    return f"{service}:{h}"
+
+async def get_cached_or_fetch(key, ttl_sec, fetch_fn):
+    row = db.fetch_cache(key)
+    if row and row.expires_at > now():
+        return row.value
+    data = await fetch_fn()
+    db.upsert_cache(key, data, now()+ttl_sec)
+    return data
+
+Orchestration Order (scan pipeline)
+
+HTTP/TLS/DNS (parallel) → produce tech tokens + basic misconfig signals.
+
+CT logs (parallel) → count entries (signal: medium churn).
+
+Vulners (parallel) → CVEs by tokens (severity mapped).
+
+GitHub search (optional) → leak indicators (high).
+
+OTX (parallel) → enrichment (weak).
+
+Lakera (when evaluating chat or agent prompts) → guardrails.
+
+Scoring → deterministic 0–100 + category subscores.
+
+Gemini → user-facing summary & 2–3 prioritized actions.
+
+Persist → scans row; raw payload & evidence included.
+
+Resend  > email delivery

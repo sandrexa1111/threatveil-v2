@@ -1,0 +1,68 @@
+{
+  "result": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "domain": "example.com",
+    "github_org": null,
+    "risk_score": 15,
+    "categories": {
+      "network": {
+        "score": 10,
+        "weight": 0.4,
+        "severity": "low"
+      },
+      "software": {
+        "score": 20,
+        "weight": 0.35,
+        "severity": "low"
+      },
+      "data_exposure": {
+        "score": 0,
+        "weight": 0.2,
+        "severity": "low"
+      },
+      "ai_integration": {
+        "score": 0,
+        "weight": 0.05,
+        "severity": "low"
+      }
+    },
+    "signals": [
+      {
+        "id": "http_header_x_frame_options_missing",
+        "type": "http",
+        "detail": "Missing X-Frame-Options header",
+        "severity": "medium",
+        "category": "software",
+        "evidence": {
+          "source": "https",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://example.com/",
+          "raw": {
+            "headers": ["strict-transport-security", "content-security-policy"]
+          }
+        }
+      },
+      {
+        "id": "tls_expiry_60d",
+        "type": "tls",
+        "detail": "TLS certificate expires in 60 days",
+        "severity": "low",
+        "category": "network",
+        "evidence": {
+          "source": "tls",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://example.com/",
+          "raw": {
+            "days_to_expiry": 60,
+            "issuer": "Let's Encrypt"
+          }
+        }
+      }
+    ],
+    "summary": "Risk score 15/100. The domain shows minimal security concerns. Focus on adding X-Frame-Options header to prevent clickjacking attacks. Certificate renewal should be scheduled within the next 30 days. Estimated breach likelihood: 5% (30d) and 10% (90d).",
+    "breach_likelihood_30d": 0.05,
+    "breach_likelihood_90d": 0.10,
+    "created_at": "2024-11-15T12:00:00Z"
+  }
+}
+

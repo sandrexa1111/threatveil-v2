@@ -1,0 +1,147 @@
+{
+  "result": {
+    "id": "660e8400-e29b-41d4-a716-446655440001",
+    "domain": "risky-example.com",
+    "github_org": "risky-org",
+    "risk_score": 85,
+    "categories": {
+      "network": {
+        "score": 90,
+        "weight": 0.4,
+        "severity": "high"
+      },
+      "software": {
+        "score": 95,
+        "weight": 0.35,
+        "severity": "high"
+      },
+      "data_exposure": {
+        "score": 60,
+        "weight": 0.2,
+        "severity": "medium"
+      },
+      "ai_integration": {
+        "score": 90,
+        "weight": 0.05,
+        "severity": "high"
+      }
+    },
+    "signals": [
+      {
+        "id": "http_no_https_redirect",
+        "type": "http",
+        "detail": "HTTP endpoint does not enforce HTTPS redirect",
+        "severity": "high",
+        "category": "network",
+        "evidence": {
+          "source": "http",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "http://risky-example.com",
+          "raw": {
+            "status": 200
+          }
+        }
+      },
+      {
+        "id": "http_header_strict_transport_security_missing",
+        "type": "http",
+        "detail": "Missing Strict-Transport-Security header",
+        "severity": "high",
+        "category": "software",
+        "evidence": {
+          "source": "https",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://risky-example.com/",
+          "raw": {
+            "headers": ["content-security-policy"]
+          }
+        }
+      },
+      {
+        "id": "http_header_content_security_policy_missing",
+        "type": "http",
+        "detail": "Missing Content-Security-Policy header",
+        "severity": "high",
+        "category": "software",
+        "evidence": {
+          "source": "https",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://risky-example.com/",
+          "raw": {
+            "headers": []
+          }
+        }
+      },
+      {
+        "id": "tls_expiry_5d",
+        "type": "tls",
+        "detail": "TLS certificate expires in 5 days",
+        "severity": "high",
+        "category": "network",
+        "evidence": {
+          "source": "tls",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://risky-example.com/",
+          "raw": {
+            "days_to_expiry": 5,
+            "issuer": "Self-Signed"
+          }
+        }
+      },
+      {
+        "id": "cve_wordpress_6_4_critical",
+        "type": "cve",
+        "detail": "WordPress 6.4 has known critical vulnerabilities (CVE-2024-XXXX)",
+        "severity": "high",
+        "category": "software",
+        "evidence": {
+          "source": "vulners",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://vulners.com/cve/CVE-2024-XXXX",
+          "raw": {
+            "cve_id": "CVE-2024-XXXX",
+            "cvss_score": 9.8,
+            "product": "wordpress 6.4"
+          }
+        }
+      },
+      {
+        "id": "github_api_key_exposed",
+        "type": "github",
+        "detail": "Potential API key exposure found in GitHub repository",
+        "severity": "high",
+        "category": "ai_integration",
+        "evidence": {
+          "source": "github",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://github.com/risky-org/repo/blob/main/.env",
+          "raw": {
+            "repository": "risky-org/repo",
+            "file_path": ".env",
+            "match_type": "api_key"
+          }
+        }
+      },
+      {
+        "id": "ct_high_churn",
+        "type": "ct",
+        "detail": "High number of recent CT log entries",
+        "severity": "medium",
+        "category": "data_exposure",
+        "evidence": {
+          "source": "ctlog",
+          "observed_at": "2024-11-15T12:00:00Z",
+          "url": "https://crt.sh/?q=risky-example.com",
+          "raw": {
+            "count": 150
+          }
+        }
+      }
+    ],
+    "summary": "Risk score 85/100. Critical security issues detected requiring immediate attention. The domain lacks HTTPS enforcement, missing critical security headers (HSTS, CSP), and has an expiring certificate. WordPress vulnerabilities and exposed API keys in GitHub repositories pose significant risks. Immediate actions: 1) Enable HTTPS redirect and HSTS, 2) Update WordPress and rotate exposed API keys, 3) Renew TLS certificate. Estimated breach likelihood: 25% (30d) and 40% (90d).",
+    "breach_likelihood_30d": 0.25,
+    "breach_likelihood_90d": 0.40,
+    "created_at": "2024-11-15T12:00:00Z"
+  }
+}
+
