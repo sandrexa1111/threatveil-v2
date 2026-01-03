@@ -62,7 +62,7 @@ async def send_report_email(
             <p>Please find the detailed PDF report attached.</p>
             <hr>
             <p style="font-size: 0.9em; color: #666;">
-                This is an automated report from ThreatVeilAI.<br>
+                This is an automated report from ThreatVeil.<br>
                 For questions, visit https://threatveil.com
             </p>
         </body>

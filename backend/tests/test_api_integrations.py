@@ -47,51 +47,69 @@ async def test_gemini_missing_key():
 
 
 @pytest.mark.asyncio
-async def test_vulners_missing_key():
-    """Test that Vulners returns service error signal when API key is missing."""
-    with patch("backend.services.cve_service.settings") as mock_settings:
-        mock_settings.vulners_api_key = None
-        
-        cves, signals = await cve_service.fetch_cves(["nginx", "wordpress"])
-        
-        assert cves == []
-        assert len(signals) == 1
-        assert signals[0].id.startswith("service_")
-        assert signals[0].severity == "low"
+async def test_nvd_empty_tokens():
+    """Test that NVD returns empty results for empty token list."""
+    cves, signals = await cve_service.fetch_cves([])
+    
+    assert cves == []
+    assert signals == []
 
 
 @pytest.mark.asyncio
-async def test_vulners_mock_response():
-    """Test Vulners with mocked successful response."""
+async def test_nvd_mock_response():
+    """Test NVD with mocked successful response."""
     mock_response = MagicMock()
     mock_response.status_code = 200
     mock_response.json.return_value = {
-        "data": {
-            "search": [
-                {
-                    "_source": {
-                        "id": "CVE-2024-1234",
-                        "title": "Test CVE",
-                        "cvss": {"score": 8.5},
-                        "href": "https://vulners.com/cve/CVE-2024-1234",
+        "vulnerabilities": [
+            {
+                "cve": {
+                    "id": "CVE-2024-1234",
+                    "descriptions": [
+                        {"lang": "en", "value": "Test CVE vulnerability description"}
+                    ],
+                    "published": "2024-01-15T10:00:00.000",
+                    "metrics": {
+                        "cvssMetricV31": [
+                            {
+                                "cvssData": {
+                                    "baseScore": 8.5
+                                }
+                            }
+                        ]
                     }
                 }
-            ]
-        }
+            }
+        ]
     }
     mock_response.raise_for_status = MagicMock()
 
-    with patch("backend.services.cve_service.settings") as mock_settings, \
-         patch("httpx.AsyncClient") as mock_client:
-        mock_settings.vulners_api_key = "test-key"
-        mock_client.return_value.__aenter__.return_value.post = AsyncMock(return_value=mock_response)
+    with patch("httpx.AsyncClient") as mock_client:
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(return_value=mock_response)
         
         cves, signals = await cve_service.fetch_cves(["nginx"])
         
         assert len(cves) == 1
         assert len(signals) == 1
         assert signals[0].type == "cve"
+        assert signals[0].evidence.source == "nvd"
         assert signals[0].severity == "high"
+
+
+@pytest.mark.asyncio
+async def test_nvd_error_handling():
+    """Test that NVD returns service error signal on failure."""
+    with patch("httpx.AsyncClient") as mock_client:
+        mock_client.return_value.__aenter__.return_value.get = AsyncMock(
+            side_effect=Exception("Connection timeout")
+        )
+        
+        cves, signals = await cve_service.fetch_cves(["nginx"])
+        
+        assert cves == []
+        assert len(signals) == 1
+        assert signals[0].id.startswith("service_")
+        assert signals[0].severity == "low"
 
 
 @pytest.mark.asyncio
@@ -187,4 +205,3 @@ async def test_github_empty_org():
     
     assert leaks == []
     assert signals == []
-

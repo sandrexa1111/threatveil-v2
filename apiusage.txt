@@ -1,14 +1,24 @@
 1) Gemini (LLM reasoning)
 
-Purpose: Turn raw signals into a plain-English summary + prioritized actions.
-Base: https://generativelanguage.googleapis.com/v1beta
-Endpoint: POST /models/gemini-1.5-pro:generateContent?key={GEMINI_API_KEY}
-Auth: API key in query string.
+Purpose  
+Turn raw signals into a plain-English summary + 2–3 prioritized actions for non-technical users.
 
-Request (recommended minimal)
+Base  
+https://generativelanguage.googleapis.com/v1beta  
+Endpoint:  
+POST /models/gemini-3:generateContent?key={GEMINI_API_KEY}  
+Auth: API key in query string (or Authorization header, depending on client).
+
+Recommended request shape
 {
   "contents": [
-    { "parts": [ { "text": "SYSTEM: You are Veil Analyst. ...\nUSER: <JSON signals + risk + likelihoods>" } ] }
+    {
+      "parts": [
+        {
+          "text": "SYSTEM: You are Veil Analyst. Be concise and factual. Explain top risks in <=120 words and give 2–3 prioritized steps.\nUSER: <JSON signals + risk_score + risk_likelihood_30d/90d>"
+        }
+      ]
+    }
   ],
   "generationConfig": {
     "temperature": 0.2,
@@ -19,100 +29,162 @@ Request (recommended minimal)
   "safetySettings": []
 }
 
-Response (relevant fields)
+Expected response (relevant part)
 {
   "candidates": [
-    { "content": { "parts": [ { "text": "Final summary <=120 words + 2–3 actions" } ] } }
+    {
+      "content": {
+        "parts": [
+          { "text": "Final summary <=120 words + 2–3 actions" }
+        ]
+      }
+    }
   ]
 }
 
-Backoff & TTL
+Backoff & caching
 
-429 / 5xx: retry after (200ms, 600ms, 1500–2500ms+jitter).
+- On 429 / 5xx: exponential backoff (e.g. ~200ms → 600ms → 1500–2500ms + jitter).
+- Cache summaries for 12h for identical {signals, risk_score, likelihoods} bundles.
+  - Compute a stable hash *before* adding timestamps.
 
-Cache: 12h for identical {signals,risk} bundles (hash before adding timestamps).
+Redaction & safety
 
-Redaction: remove emails, secrets, tokens from prompt; never include API keys.
+- Strip emails, tokens, API keys, and secrets from the prompt before sending.
+- Never send raw secrets, .env contents, or full file bodies to Gemini.
+- If `candidates` is missing/empty → return deterministic fallback summary.
+- If model returns longer content, clamp yourself to 120 words.
 
-Error handling
-
-Missing candidates → return deterministic fallback summary.
-
-Guard against multi-paragraph outputs; clamp to 120 words yourself if needed.
+---
 
 2) Supabase Postgres (persistence)
 
-Purpose: Store scans, signals, summaries, cache rows.
-Connect: DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/db
+Purpose  
+Store scans, AI scans, summaries, and cached API responses.
 
-Tables (core)
+Connection  
+DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/db
+
+Core tables (conceptual)
+
 -- scans
-id uuid pk, domain text, github_org text null,
-risk_score int, risk_likelihood_30d float8, risk_likelihood_90d float8,
-categories_json jsonb, signals_json jsonb, summary text,
-raw_payload jsonb, created_at timestamptz default now();
+id uuid pk,
+domain text,
+github_org text null,
+risk_score int,
+risk_likelihood_30d float8,
+risk_likelihood_90d float8,
+categories_json jsonb,
+signals_json jsonb,
+summary text,
+raw_payload jsonb,
+created_at timestamptz default now();
+
+-- scan_ai
+id uuid pk,
+scan_id uuid fk -> scans.id,
+ai_score int,
+ai_tools_detected jsonb,
+ai_key_leaks jsonb,
+ai_agents_detected jsonb,
+ai_summary text,
+created_at timestamptz default now();
 
 -- cache
-key text primary key, value jsonb not null, expires_at timestamptz not null;
+key text primary key,
+value jsonb not null,
+expires_at timestamptz not null;
 
 Patterns
 
-Use pool_pre_ping=True on SQLAlchemy engine.
+- Use `pool_pre_ping=True` on the SQLAlchemy engine.
+- Keep transactions short; wrap writes in context managers and rollback on errors.
+- Store evidence inside `signals_json` entries (see Evidence Envelope below).
+- Add indexes later as needed (e.g. `(domain, created_at DESC)` and `scan_ai.scan_id` unique).
 
-Wrap writes in short transactions; store evidence inside signals_json (see envelope below).
+---
 
-Add partial indexes later (e.g., by domain & created_at DESC).
+3) GitHub (public code & AI footprint)
 
-3) GitHub (public code search)
+Purpose  
+Discover public leaks (keys, prompts, .env), AI libraries, agent frameworks, and AI config files for a target org. **Public data only**.
 
-Purpose: Find public leaks (keys, prompts, .env) in a target org.
-Base: https://api.github.com
-Endpoint: GET /search/code
-Auth: Authorization: token {GITHUB_TOKEN} (fine-grained, read-only public repos).
+Base  
+https://api.github.com  
+Auth:  
+Authorization: token {GITHUB_TOKEN} (fine-grained, read-only public repos).
 
-Query design
+Primary endpoint  
+GET /search/code
 
-Use qualifiers to reduce noise and rate cost:
-
-q=org:{ORG} (filename:.env OR "OPENAI_API_KEY" OR "GEMINI_API_KEY" OR "system prompt" OR "-----BEGIN PRIVATE KEY-----")
+Example query (keep tight to control rate use)
+q=org:{ORG} (filename:.env OR "OPENAI_API_KEY" OR "GEMINI_API_KEY" OR "system prompt" OR "-----BEGIN PRIVATE KEY-----")  
 per_page=10
 
-Response (shape)
+Response (subset)
 {
   "total_count": 2,
   "items": [
-    { "name":"...", "path":"...", "repository":{"full_name":"org/repo"}, "html_url":"https://github.com/org/repo/blob/..." }
+    {
+      "name": "...",
+      "path": "...",
+      "repository": { "full_name": "org/repo" },
+      "html_url": "https://github.com/org/repo/blob/..."
+    }
   ]
 }
 
-Backoff & TTL
+Usage patterns
 
-Respect X-RateLimit-Remaining & Retry-After (if present).
+- Use separate helper(s) to:
+  - Detect AI libraries/frameworks (openai, langchain, etc.).
+  - Detect AI-related files (*.prompt, *.ai, *.llm.yaml, ai-config.json).
+  - Detect agent frameworks (CrewAI, AutoGen, LangGraph).
+  - Detect key leak indicators (OPENAI_API_KEY, GEMINI_API_KEY, etc.).
 
-Cache: 24h per (org, query); only store metadata (no code blobs).
+Backoff & caching
 
-Legal/Security
+- Respect `X-RateLimit-Remaining` and `Retry-After` headers where present.
+- On 429/5xx: exponential backoff and *graceful* degradation (partial results).
+- Cache by `(org, query)` for 24h; store only metadata (repo, path, html_url).
+- Never store entire file contents in the DB.
 
-Do not persist entire file contents. Link to html_url.
+Legal & security
 
-Provide remediation guidance (key rotation, secret scanning CI).
+- Public information only; never attempt to bypass auth or access private repos.
+- Present links (`html_url`) and guidance, not raw contents.
+- Provide remediation advice (rotate keys, add secret scanning to CI/CD).
+
+---
 
 4) Vulners (CVE & security intel)
 
-Purpose: Map detected tech tokens (e.g., nginx/wordpress) to known CVEs.
-Base: https://vulners.com/api/v3
-Endpoints:
-• Search: POST /search/lucene/ with Lucene query
-• ID lookup: POST /search/id/
-Auth: X-Vulners-Api-Key: {VULNERS_API_KEY}
+Purpose  
+Map detected technology tokens (e.g., "nginx", "wordpress 6.4") to known CVEs and severities.
+
+Base  
+https://vulners.com/api/v3  
+Endpoints  
+- POST /search/lucene/ — for product/version CVE search  
+- POST /search/id/ — for specific CVE lookups (optional)
+
+Auth  
+X-Vulners-Api-Key: {VULNERS_API_KEY}
 
 Query strategy
 
-Build tokens from HTTP headers/meta: Server, X-Powered-By, meta generator.
+- Derive tokens from HTTP headers/meta:
+  - `Server`, `X-Powered-By`, meta `generator`, etc.
+- Normalize tokens like:
+  - "nginx 1.18"
+  - "wordpress 6.4"
+  - Fallback to product-only (“nginx”, “wordpress”) if version is unknown.
 
-Normalize to "nginx 1.18" or "wordpress 6.4"; fallback to product-only if version absent.
-
-{ "query": "wordpress 6.4 AND type:cve", "size": 10 }
+Example request
+{
+  "query": "wordpress 6.4 AND type:cve",
+  "size": 10
+}
 
 Response (subset)
 {
@@ -132,30 +204,40 @@ Response (subset)
   }
 }
 
-Scoring mapping
+Severity mapping
 
-cvss.score >= 7.0 → high; 4.0–6.9 → medium; else low (software category).
+- `cvss.score >= 7.0` → high (software category)
+- `4.0–6.9` → medium
+- `< 4.0` or missing → low
 
-Backoff & TTL
+Backoff & caching
 
-429/5xx → exp. backoff.
+- On 429/5xx: exponential backoff and return *empty CVE list* on repeated failure.
+- Cache results for 24h per normalized token string.
+- Deduplicate CVEs by `id`.
 
-Cache: 24h per token string; dedupe CVEs by id.
+---
 
-5) Lakera Guard (prompt-injection / PII / safety)
+5) Lakera Guard (optional prompt/PII/safety)
 
-Purpose: Score inputs/outputs for injection, PII, jailbreak, etc.
-Base: https://api.lakera.ai
-Endpoint (recommended): POST /v2/guard (multi-detector in one call)
-Auth: Authorization: Bearer {LAKERA_API_KEY}
+Purpose  
+Score inputs/outputs for prompt injection, PII exposure, and safety.  
+*Optional*, can be integrated later for Horizon / chat safeguards.
 
-Request
+Base  
+https://api.lakera.ai  
+Endpoint  
+POST /v2/guard  
+Auth  
+Authorization: Bearer {LAKERA_API_KEY}
+
+Request example
 {
   "input": "User prompt or model output to evaluate",
   "detectors": ["prompt_injection", "pii", "safety"]
 }
 
-Response (typical)
+Response (subset)
 {
   "results": {
     "prompt_injection": { "score": 0.83, "label": "high" },
@@ -166,86 +248,119 @@ Response (typical)
 
 Usage patterns
 
-Pre-LLM: score incoming user prompts.
+- Pre-LLM: evaluate risky prompts before sending them to Gemini.
+- Post-LLM: inspect model outputs for PII/safety issues.
+- Cache classifications for 1–6h for identical text.
+- Never cache raw secrets; only store hashes or high-level results.
 
-Post-LLM: score model outputs (redact or warn if unsafe).
+---
 
-Cache: 1–6h for identical text; never cache raw secrets.
+6) AlienVault OTX (optional threat enrichment)
 
-6) AlienVault OTX (threat intel enrichment)
+Purpose  
+Enrich domain with community threat intel signals: pulses, malware tags, etc.  
+Considered a *weak* signal unless corroborated by config issues or CVEs.
 
-Purpose: Enrich a domain with community intel signals (pulses, malware tags).
-Base: https://otx.alienvault.com/api/v1
-Auth: X-OTX-API-KEY: {OTX_API_KEY}
+Base  
+https://otx.alienvault.com/api/v1  
+Auth  
+X-OTX-API-KEY: {OTX_API_KEY}
 
-Useful endpoints
+Useful endpoint
 
-Domain intel: GET /indicators/domain/{domain}/general
-→ Pull pulse_info.count, malicious, alexa etc.
-
-Subscribed pulses: GET /pulses/subscribed (optional for research feed)
+Domain intel:  
+GET /indicators/domain/{domain}/general
 
 Response (subset)
 {
   "indicator": "example.com",
-  "pulse_info": { "count": 3, "pulses": [ { "name":"...", "id":"...", "modified":"..." } ] }
+  "pulse_info": {
+    "count": 3,
+    "pulses": [
+      { "name":"...", "id":"...", "modified":"..." }
+    ]
+  }
 }
 
 Integration
 
-Treat as weak signal unless corroborated by config issues.
+- Derive a soft signal:
+  - e.g., `otx_pulse_count > 0` → add low/medium severity enrichment signal.
+- Cache for 24h per domain.
+- OTX failure must not affect overall scan success.
 
-Cache: 24h per domain.
+---
 
+8) Resend (email reports, optional)
 
-8) Resend (email reports)
+Purpose  
+Send PDF reports and (later) weekly summaries via email.  
+Not required for scanning; optional feature.
 
-Purpose: Email PDF reports and weekly summaries.
-Base: https://api.resend.com
-Endpoint: POST /emails
-Auth: Authorization: Bearer {RESEND_API_KEY}
+Base  
+https://api.resend.com  
+Endpoint  
+POST /emails  
+Auth  
+Authorization: Bearer {RESEND_API_KEY}
 
 Attachment flow
 
-Base64 encode PDF bytes; include filename + content.
+- Base64-encode PDF bytes returned by report generation.
+- Include as attachment with proper filename.
 
+Example request
 {
   "from": "ThreatVeil <reports@yourdomain>",
   "to": ["owner@client.com"],
   "subject": "Your ThreatVeil Risk Report",
-  "html": "<p>Attached is your report.</p>",
-  "attachments": [{
-    "filename": "threatveil-report.pdf",
-    "content": "<base64>"
-  }]
+  "html": "<p>Attached is your latest ThreatVeil report.</p>",
+  "attachments": [
+    {
+      "filename": "threatveil-report.pdf",
+      "content": "<base64>"
+    }
+  ]
 }
 
 Tips
 
-Verify sender domain first; include unsubscribe/manage-alerts link later.
+- Verify sender domain before production use.
+- Add unsubscribe / manage-alerts link in future.
+- Retry on 5xx; log message id for audit.
 
-Retry on 5xx with backoff; log id from success response for audit.
+---
 
-Evidence Envelope (standardize in every signal)
+Evidence Envelope (standard signal schema)
 
-Always store provenance so summaries are auditable and investor-safe.
+Every signal should follow a consistent, auditable structure:
 
 {
   "id": "http_header_hsts_missing",
-  "type": "http|tls|dns|ct|cve|github|otx|ai_guard",
+  "type": "http" | "tls" | "dns" | "ct" | "cve" | "github" | "otx" | "ai_guard",
   "detail": "HSTS missing on root path",
-  "severity": "high|medium|low",
-  "category": "network|software|data_exposure|ai_integration",
+  "severity": "high" | "medium" | "low",
+  "category": "network" | "software" | "data_exposure" | "ai_integration",
   "evidence": {
     "source": "https",               // or "vulners", "github", "otx", "lakera"
     "observed_at": "2025-11-13T12:00:00Z",
     "url": "https://example.com/",   // if applicable
-    "raw": { "header_sample": { "Strict-Transport-Security": null } }
+    "raw": {
+      "header_sample": {
+        "Strict-Transport-Security": null
+      }
+    }
   }
 }
 
+This makes summaries explainable, testable, and investor-safe.
+
+---
+
 Retry / Backoff Template (Python)
-import asyncio, random
+
+```python
+import asyncio, random, httpx
 
 async def with_backoff(fn, *, retries=3, base_ms=200, max_ms=2500):
     for i in range(retries):
@@ -260,40 +375,5 @@ async def with_backoff(fn, *, retries=3, base_ms=200, max_ms=2500):
         except (httpx.ReadTimeout, httpx.ConnectTimeout):
             delay = min(max_ms, base_ms * (2 ** i)) + random.randint(0, 200)
             await asyncio.sleep(delay / 1000)
-    # final try
+    # final attempt (may still fail; caller must handle)
     return await fn()
-
-Cache Helper (pseudo)
-def cache_key(service: str, query: dict) -> str:
-    h = sha256(json.dumps(query, sort_keys=True).encode()).hexdigest()[:16]
-    return f"{service}:{h}"
-
-async def get_cached_or_fetch(key, ttl_sec, fetch_fn):
-    row = db.fetch_cache(key)
-    if row and row.expires_at > now():
-        return row.value
-    data = await fetch_fn()
-    db.upsert_cache(key, data, now()+ttl_sec)
-    return data
-
-Orchestration Order (scan pipeline)
-
-HTTP/TLS/DNS (parallel) → produce tech tokens + basic misconfig signals.
-
-CT logs (parallel) → count entries (signal: medium churn).
-
-Vulners (parallel) → CVEs by tokens (severity mapped).
-
-GitHub search (optional) → leak indicators (high).
-
-OTX (parallel) → enrichment (weak).
-
-Lakera (when evaluating chat or agent prompts) → guardrails.
-
-Scoring → deterministic 0–100 + category subscores.
-
-Gemini → user-facing summary & 2–3 prioritized actions.
-
-Persist → scans row; raw payload & evidence included.
-
-Resend  > email delivery

@@ -14,7 +14,7 @@ def build_report(scan: ScanResult) -> bytes:
     margin = 40
 
     c.setFont("Helvetica-Bold", 18)
-    c.drawString(margin, height - margin, "ThreatVeilAI Risk Report")
+    c.drawString(margin, height - margin, "ThreatVeil Risk Report")
     c.setFont("Helvetica", 12)
     c.drawString(margin, height - margin - 24, f"Domain: {scan.domain}")
     c.drawString(margin, height - margin - 40, f"Generated: {datetime.utcnow():%Y-%m-%d %H:%M UTC}")

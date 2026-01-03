@@ -6,7 +6,7 @@ export function Header() {
   return (
     <header className="flex items-center justify-between py-6">
       <div>
-        <p className="text-sm uppercase tracking-[0.3em] text-slate-500">ThreatVeilAI</p>
+        <p className="text-sm uppercase tracking-[0.3em] text-slate-500">ThreatVeil</p>
         <h1 className="text-3xl font-semibold text-slate-900">Passive Risk Intelligence</h1>
       </div>
       <Link

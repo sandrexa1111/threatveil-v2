@@ -1,4 +1,4 @@
-"""Structured logging for ThreatVeilAI."""
+"""Structured logging for ThreatVeil."""
 import logging
 import time
 from typing import Any, Dict, Optional

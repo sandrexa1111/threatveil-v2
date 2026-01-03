@@ -2,13 +2,473 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: 255 255 255;
-  --foreground: 15 23 42;
+/* =============================================================================
+   DESIGN SYSTEM TOKENS
+   ThreatVeil Premium SaaS UI
+   ============================================================================= */
+
+@layer base {
+  :root {
+    /* Spacing Scale (4px base) */
+    --space-1: 0.25rem;
+    /* 4px */
+    --space-2: 0.5rem;
+    /* 8px */
+    --space-3: 0.75rem;
+    /* 12px */
+    --space-4: 1rem;
+    /* 16px */
+    --space-6: 1.5rem;
+    /* 24px */
+    --space-8: 2rem;
+    /* 32px */
+    --space-10: 2.5rem;
+    /* 40px */
+    --space-12: 3rem;
+    /* 48px */
+
+    /* Typography Scale */
+    --text-xs: 0.75rem;
+    --text-sm: 0.875rem;
+    --text-base: 1rem;
+    --text-lg: 1.125rem;
+    --text-xl: 1.25rem;
+    --text-2xl: 1.5rem;
+    --text-3xl: 1.875rem;
+
+    /* Brand Colors */
+    --brand-accent: 187 94% 51%;
+    /* Cyan/Teal #22d3ee */
+    --brand-accent-light: 187 94% 65%;
+    --brand-accent-dark: 187 94% 40%;
+
+    /* Severity Colors */
+    --severity-high: 0 84% 60%;
+    /* Red */
+    --severity-medium: 45 93% 47%;
+    /* Amber */
+    --severity-low: 142 76% 36%;
+    /* Green */
+    --severity-critical: 0 72% 51%;
+    /* Darker red */
+
+    /* AI Badge Colors */
+    --ai-high: 280 85% 60%;
+    /* Purple for AI exposure */
+    --ai-medium: 280 60% 50%;
+    --ai-low: 280 40% 40%;
+
+    /* Card Styling */
+    --card-bg: 222 47% 6%;
+    /* Dark blue-gray */
+    --card-bg-elevated: 222 47% 8%;
+    --card-border: 217 33% 17%;
+    --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
+    --card-radius: 1rem;
+    /* rounded-2xl equivalent */
+
+    /* Status Colors */
+    --status-pending: 45 93% 47%;
+    /* Amber */
+    --status-in-progress: 217 91% 60%;
+    /* Blue */
+    --status-resolved: 142 76% 36%;
+    /* Green */
+
+    /* Glassmorphism */
+    --glass-bg: rgba(17, 24, 39, 0.8);
+    --glass-border: rgba(55, 65, 81, 0.5);
+    --glass-blur: 12px;
+
+    /* Light mode base tokens */
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+    --radius: 0.5rem;
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+
+  /* Dark mode - Primary mode for ThreatVeil */
+  .dark {
+    --background: 222 47% 4%;
+    --foreground: 0 0% 98%;
+    --card: 222 47% 6%;
+    --card-foreground: 0 0% 98%;
+    --popover: 222 47% 6%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 187 94% 51%;
+    --primary-foreground: 222 47% 4%;
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+    --accent: 187 94% 51%;
+    --accent-foreground: 222 47% 4%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 187 94% 51%;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+  }
 }
 
-body {
-  color: rgb(var(--foreground));
-  background: radial-gradient(circle at top, rgba(34, 211, 238, 0.1), transparent), #f8fafc;
-  min-height: 100vh;
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    @apply dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(34, 211, 238, 0.03), transparent);
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+/* =============================================================================
+   COMPONENT UTILITIES
+   ============================================================================= */
+
+@layer components {
+
+  /* Premium Card Styling */
+  .card-glass {
+    @apply bg-[#111827]/80 backdrop-blur-sm border border-slate-800/60 rounded-2xl shadow-lg;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .card-glass:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 25px -5px rgba(0, 0, 0, 0.3), 0 4px 10px -5px rgba(34, 211, 238, 0.1);
+  }
+
+  /* Section Header */
+  .section-header {
+    @apply flex items-center gap-2 text-sm font-semibold text-white/95;
+  }
+
+  .section-header-icon {
+    @apply h-4 w-4 text-cyan-400;
+  }
+
+  /* Typography Classes */
+  .text-page-title {
+    @apply text-2xl font-semibold tracking-tight text-white;
+  }
+
+  .text-section-title {
+    @apply text-base font-semibold text-white/95;
+  }
+
+  .text-section-label {
+    @apply text-xs font-medium text-slate-500 uppercase tracking-wider;
+  }
+
+  .text-headline-primary {
+    @apply text-xl font-semibold text-white tracking-tight;
+  }
+
+  .text-headline-secondary {
+    @apply text-base font-medium text-slate-200;
+  }
+
+  .text-label {
+    @apply text-xs font-medium text-slate-400 uppercase tracking-wider;
+  }
+
+  .text-body-muted {
+    @apply text-sm text-slate-400 leading-relaxed;
+  }
+
+  .text-muted {
+    @apply text-sm text-slate-400;
+  }
+
+  .text-muted-sm {
+    @apply text-xs text-slate-500;
+  }
+
+  /* Dividers */
+  .divider-subtle {
+    @apply border-t border-slate-800/50;
+  }
+
+  /* Card Variants */
+  .card-elevated {
+    @apply bg-slate-900/60 border border-slate-800/60 rounded-xl;
+  }
+
+  .card-accent {
+    @apply bg-[#111827]/80 border-l-2 border-l-cyan-500/50 border border-slate-800/60 rounded-xl;
+  }
+
+  /* Badge Base */
+  .badge-base {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border;
+  }
+
+  /* Severity Badges */
+  .badge-high {
+    @apply badge-base bg-red-500/10 text-red-400 border-red-500/20;
+  }
+
+  .badge-medium {
+    @apply badge-base bg-amber-500/10 text-amber-400 border-amber-500/20;
+  }
+
+  .badge-low {
+    @apply badge-base bg-emerald-500/10 text-emerald-400 border-emerald-500/20;
+  }
+
+  .badge-critical {
+    @apply badge-base bg-red-600/15 text-red-300 border-red-500/30;
+  }
+
+  /* AI Badges */
+  .badge-ai-high {
+    @apply badge-base bg-purple-500/10 text-purple-400 border-purple-500/20;
+  }
+
+  .badge-ai-medium {
+    @apply badge-base bg-purple-500/10 text-purple-300 border-purple-500/15;
+  }
+
+  .badge-ai-low {
+    @apply badge-base bg-slate-500/10 text-slate-400 border-slate-500/20;
+  }
+
+  /* Status Badges */
+  .badge-pending {
+    @apply badge-base bg-amber-500/10 text-amber-400 border-amber-500/20;
+  }
+
+  .badge-in-progress {
+    @apply badge-base bg-blue-500/10 text-blue-400 border-blue-500/20;
+  }
+
+  .badge-resolved {
+    @apply badge-base bg-emerald-500/10 text-emerald-400 border-emerald-500/20;
+  }
+
+  /* Accent Badge - Brand */
+  .badge-accent {
+    @apply badge-base bg-cyan-500/10 text-cyan-400 border-cyan-500/20;
+  }
+
+  /* Source Chips */
+  .source-chip {
+    @apply inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium bg-slate-800/60 text-slate-300 border border-slate-700/50;
+  }
+
+  /* Button Accent */
+  .btn-accent {
+    @apply bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-medium transition-colors;
+  }
+
+  .btn-accent-outline {
+    @apply border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 transition-colors;
+  }
+
+  /* Skeleton Animation */
+  .skeleton {
+    @apply animate-pulse bg-slate-800/60 rounded;
+  }
+
+  .skeleton-shimmer {
+    background: linear-gradient(90deg,
+        rgba(30, 41, 59, 0.6) 0%,
+        rgba(51, 65, 85, 0.6) 50%,
+        rgba(30, 41, 59, 0.6) 100%);
+    background-size: 200% 100%;
+    animation: shimmer 1.5s ease-in-out infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  /* Table Styling */
+  .table-row-hover {
+    @apply transition-colors hover:bg-white/[0.02];
+  }
+
+  /* Stat Card */
+  .stat-card {
+    @apply card-glass p-4 flex flex-col gap-2;
+  }
+
+  .stat-value {
+    @apply text-2xl font-bold text-white;
+  }
+
+  .stat-label {
+    @apply text-xs font-medium text-slate-400 uppercase tracking-wider;
+  }
+
+  .stat-trend-up {
+    @apply text-emerald-400;
+  }
+
+  .stat-trend-down {
+    @apply text-red-400;
+  }
+
+  /* Empty State */
+  .empty-state {
+    @apply flex flex-col items-center justify-center py-12 text-center;
+  }
+
+  .empty-state-icon {
+    @apply h-16 w-16 text-slate-700 mb-4;
+  }
+
+  .empty-state-title {
+    @apply text-lg font-semibold text-white/90 mb-2;
+  }
+
+  .empty-state-description {
+    @apply text-sm text-slate-400 max-w-sm mb-6;
+  }
+
+  /* Focus Ring */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900;
+  }
+}
+
+/* =============================================================================
+   ANIMATION UTILITIES
+   ============================================================================= */
+
+@layer utilities {
+
+  /* Page Transitions */
+  .animate-fade-in {
+    animation: fadeIn 0.3s ease-out;
+  }
+
+  .animate-slide-up {
+    animation: slideUp 0.3s ease-out;
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.2s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-10px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Hover Lift */
+  .hover-lift {
+    @apply transition-transform duration-200;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+  }
+
+  /* Glow Effects */
+  .glow-accent {
+    box-shadow: 0 0 20px rgba(34, 211, 238, 0.15);
+  }
+
+  .glow-accent-hover:hover {
+    box-shadow: 0 0 25px rgba(34, 211, 238, 0.2);
+  }
+}
+
+/* =============================================================================
+   PRINT STYLES (for Shareable Brief)
+   ============================================================================= */
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .no-print {
+    display: none !important;
+  }
+
+  .print-only {
+    display: block !important;
+  }
+
+  .card-glass {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+  }
 }

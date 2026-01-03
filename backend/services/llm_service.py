@@ -10,7 +10,7 @@ from .cache import cache_key, get_cached_or_fetch
 from .signal_factory import make_signal
 from .utils import with_backoff
 
-BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro:generateContent"
+BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3:generateContent"
 TIMEOUT = httpx.Timeout(20.0, connect=5.0, read=15.0)
 
 

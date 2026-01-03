@@ -1,46 +1,49 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { LandingHeader } from '@/components/LandingHeader';
+import { HeroSection } from '@/components/landing/HeroSection';
+import { WhatWeDoSection } from '@/components/landing/WhatWeDoSection';
+import { AudienceSection } from '@/components/landing/AudienceSection';
+import { ComparisonSection } from '@/components/landing/ComparisonSection';
+import { HowItWorksSection } from '@/components/landing/HowItWorksSection';
+import { DifferentiatorsSection } from '@/components/landing/DifferentiatorsSection';
+import { PricingSection } from '@/components/landing/PricingSection';
+import { TrustSection } from '@/components/landing/TrustSection';
+import { FinalCTASection } from '@/components/landing/FinalCTASection';
 
-import { Header } from '@/components/Header';
-import { Footer } from '@/components/Footer';
-import { DomainForm } from '@/components/DomainForm';
-import { RiskCard } from '@/components/RiskCard';
-import type { ScanResult } from '@/lib/types';
-import { ping } from '@/lib/api';
-import { LoadingSpinner } from '@/components/LoadingSpinner';
-
-export default function Page() {
-  const [result, setResult] = useState<ScanResult | null>(null);
-  const [apiOk, setApiOk] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    ping().then(setApiOk);
-  }, []);
-
+export default function LandingPage() {
   return (
-    <main className="mx-auto max-w-5xl px-4 pb-16 pt-10">
-      <Header />
-      <section className="grid gap-8 md:grid-cols-[1fr_1.5fr]">
-        <div>
-          <DomainForm onResult={setResult} />
-          <div className="mt-4 text-sm text-slate-500">
-            API status:{' '}
-            {apiOk === null ? <LoadingSpinner size="sm" /> : apiOk ? <span className="text-emerald-600">Online</span> : <span className="text-rose-600">Offline</span>}
-          </div>
-        </div>
-        {result ? <RiskCard result={result} /> : <PlaceholderPanel />}
-      </section>
-      <Footer />
-    </main>
-  );
-}
+    <div className="min-h-screen bg-slate-950">
+      <LandingHeader />
+      {/* Add padding-top to account for fixed header */}
+      <main className="pt-16">
+        {/* 1. Hero */}
+        <HeroSection />
 
-function PlaceholderPanel() {
-  return (
-    <div className="flex min-h-[400px] flex-col justify-center rounded-3xl border border-dashed border-slate-200 bg-white/80 p-8 text-center text-slate-500">
-      <p className="text-lg font-semibold text-slate-700">Awaiting scan...</p>
-      <p className="mt-2">Submit a domain to see risk scoring, signals, and exportable PDF.</p>
+        {/* 2. What We Do (Collect → Decide → Act) */}
+        <WhatWeDoSection />
+
+        {/* 3. Who It's For (Audience personas) */}
+        <AudienceSection />
+
+        {/* 4. Why Tools Fail (Problem/Solution) */}
+        <ComparisonSection />
+
+        {/* 5. How It Works (Timeline) */}
+        <HowItWorksSection />
+
+        {/* 6. What Makes Us Different (Value props) */}
+        <DifferentiatorsSection />
+
+        {/* 7. Pricing */}
+        <PricingSection />
+
+        {/* 8. Trust & Safety */}
+        <TrustSection />
+
+        {/* 9. Final CTA */}
+        <FinalCTASection />
+      </main>
     </div>
   );
 }

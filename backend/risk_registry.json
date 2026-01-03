@@ -1,0 +1,101 @@
+{
+  "signals": {
+    "http_header_strict_transport_security_missing": {
+      "severity": "high",
+      "category": "network",
+      "remediation": "Enable HSTS (HTTP Strict Transport Security) to enforce HTTPS and prevent protocol downgrade attacks. Add 'Strict-Transport-Security' header with max-age directive."
+    },
+    "http_header_content_security_policy_missing": {
+      "severity": "high",
+      "category": "software",
+      "remediation": "Add a strict Content-Security-Policy header to mitigate XSS attacks. Define allowed sources for scripts, styles, and other resources."
+    },
+    "http_header_x_frame_options_missing": {
+      "severity": "medium",
+      "category": "software",
+      "remediation": "Add X-Frame-Options header set to 'DENY' or 'SAMEORIGIN' to prevent clickjacking attacks."
+    },
+    "http_header_x_content_type_options_missing": {
+      "severity": "medium",
+      "category": "software",
+      "remediation": "Add X-Content-Type-Options header set to 'nosniff' to prevent MIME type sniffing attacks."
+    },
+    "http_header_referrer_policy_missing": {
+      "severity": "low",
+      "category": "software",
+      "remediation": "Add Referrer-Policy header to control referrer information sent with requests. Recommended: 'strict-origin-when-cross-origin'."
+    },
+    "http_header_permissions_policy_missing": {
+      "severity": "low",
+      "category": "software",
+      "remediation": "Add Permissions-Policy header to restrict browser features and APIs that can be used by the page."
+    },
+    "http_no_https_redirect": {
+      "severity": "high",
+      "category": "network",
+      "remediation": "Configure HTTP to HTTPS redirect on your web server (nginx, Apache, or load balancer) to enforce secure connections."
+    },
+    "http_https_unreachable": {
+      "severity": "high",
+      "category": "network",
+      "remediation": "Ensure HTTPS endpoint is accessible and properly configured. Check firewall rules, SSL certificate, and server configuration."
+    },
+    "tls_expiring_soon": {
+      "severity": "high",
+      "category": "network",
+      "remediation": "Renew your TLS certificate before it expires. Set up automatic renewal (e.g., Let's Encrypt with certbot) to prevent service disruption."
+    },
+    "tls_unreachable": {
+      "severity": "high",
+      "category": "network",
+      "remediation": "Check TLS configuration, certificate installation, and network connectivity. Ensure port 443 is open and certificate is valid."
+    },
+    "dns_missing_dmarc": {
+      "severity": "medium",
+      "category": "network",
+      "remediation": "Add a DMARC (Domain-based Message Authentication, Reporting & Conformance) TXT record to prevent email spoofing. Start with 'v=DMARC1; p=none;' for monitoring."
+    },
+    "dns_missing_spf": {
+      "severity": "medium",
+      "category": "network",
+      "remediation": "Add an SPF (Sender Policy Framework) TXT record to specify which mail servers are authorized to send email for your domain."
+    },
+    "ct_high_churn": {
+      "severity": "medium",
+      "category": "network",
+      "remediation": "Investigate frequent certificate issuance. High churn may indicate certificate misconfiguration, automated renewal issues, or potential security incidents."
+    },
+    "ct_fetch_failed": {
+      "severity": "low",
+      "category": "network",
+      "remediation": "Certificate transparency log check failed. This is informational; verify certificate status manually if needed."
+    },
+    "cve_*": {
+      "severity": "variable",
+      "category": "software",
+      "remediation": "Review CVE details and apply security patches or updates. CVSS score >= 7.0 is high severity, >= 4.0 is medium. Prioritize critical vulnerabilities."
+    },
+    "otx_pulse_match": {
+      "severity": "variable",
+      "category": "network",
+      "remediation": "Domain appears in threat intelligence feeds. Review associated threat pulses, investigate potential compromise, and consider additional monitoring."
+    },
+    "github_leak_*": {
+      "severity": "high",
+      "category": "ai_integration",
+      "remediation": "Rotate the leaked API key or secret immediately, remove it from public repositories, and store secrets in a secure vault (e.g., environment variables, secrets manager)."
+    },
+    "service_*_failure": {
+      "severity": "low",
+      "category": "network",
+      "remediation": "External service check failed. Results may be incomplete. Verify API keys and service availability if this persists."
+    },
+    "scan_completed_no_findings": {
+      "severity": "low",
+      "category": "software",
+      "remediation": "No critical findings detected. Continue regular security monitoring and maintain security best practices."
+    }
+  }
+}
+
+

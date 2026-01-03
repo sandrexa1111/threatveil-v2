@@ -2,7 +2,7 @@ from typing import Dict, List, Tuple
 
 from .schemas import Category, CategoryScore, Severity, Signal
 
-SEVERITY_POINTS: Dict[Severity, int] = {"low": 5, "medium": 15, "high": 30}
+SEVERITY_POINTS: Dict[Severity, int] = {"low": 5, "medium": 15, "high": 30, "critical": 50}
 CATEGORY_WEIGHTS: Dict[Category, float] = {
     "network": 0.4,
     "software": 0.35,

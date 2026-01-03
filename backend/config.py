@@ -1,4 +1,4 @@
-"""Centralized configuration for ThreatVeilAI backend."""
+"""Centralized configuration for ThreatVeil backend."""
 import os
 from typing import Optional
 
@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
     # Frontend
-    next_public_app_name: str = Field(default="ThreatVeilAI")
+    next_public_app_name: str = Field(default="ThreatVeil")
     next_public_api_base: str = Field(default="http://127.0.0.1:8000")
 
     # Backend
@@ -47,6 +47,10 @@ class Settings(BaseSettings):
     port: int = Field(default=8000)
     environment: str = Field(default="development")
     log_level: str = Field(default="info")
+
+    # Scheduler (Continuous Monitoring)
+    scheduler_enabled: bool = Field(default=True)
+    scheduler_interval_minutes: int = Field(default=5)
 
     if SettingsConfigDict:
         model_config = SettingsConfigDict(

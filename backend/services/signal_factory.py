@@ -48,6 +48,7 @@ def make_service_error_signal(
         "CT": "Certificate transparency log check failed, results may be incomplete.",
         "OTX": "Threat intelligence enrichment unavailable, results may be incomplete.",
         "CVE": "Vulnerability database check failed, results may be incomplete.",
+        "NVD": "NVD vulnerability database check failed, results may be incomplete.",
         "GitHub": "GitHub code search unavailable, results may be incomplete.",
     }
     
